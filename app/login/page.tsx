@@ -147,7 +147,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 from-blue-50 to-indigo-50 flex items-center justify-center">
+    <div className="mt-[200px] bg-gray-50 from-blue-50 to-indigo-50 flex items-center justify-center">
       <div className="w-[480px] bg-white rounded-xl shadow-lg p-10 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
         <div className="flex justify-center mb-4">
