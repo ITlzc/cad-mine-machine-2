@@ -184,7 +184,7 @@ export default function Home() {
       {loading ? (
         <Loading />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3 3xl:grid-cols-4 gap-6">
           {miners.map(miner => (
             <div key={miner.id} className="bg-white rounded-lg shadow overflow-hidden">
               {/* 图片容器 */}
