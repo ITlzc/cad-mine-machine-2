@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCurrentUser, signOut } from '../utils/supabase_lib';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useDisconnect } from 'wagmi'
 
 const Header: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -13,6 +14,8 @@ const Header: React.FC = () => {
   const pathname = usePathname();
   const [user, setUser] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
+  const [loginKey, setLoginKey] = useState(0);
+  const { disconnect } = useDisconnect()
 
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -33,53 +36,70 @@ const Header: React.FC = () => {
     }
   }, [])
 
+  // 监听登录状态变化
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user') {
+        setLoginKey(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchUserData = async () => {
-      let user_string = localStorage.getItem('user');
-      let user = null;
-      if (user_string) {
-        user = JSON.parse(user_string);
-      }
-      if (!user) {
-        const { user: user_data, error } = await getCurrentUser();
-        if (error || !user_data) {
-          router.push('/login');
-          return
+      try {
+        let user_string = localStorage.getItem('user');
+        let user = null;
+        if (user_string) {
+          user = JSON.parse(user_string);
         }
-        user = user_data;
+        if (!user) {
+          const { user: user_data, error } = await getCurrentUser();
+          if (error || !user_data) {
+            router.push('/login');
+            return;
+          }
+          user = user_data;
+        }
+        
+        let tamp = {
+          id: user?.id,
+          avatar_url: user?.user_metadata?.avatar_url,
+          full_name: user?.user_metadata?.full_name,
+          name: user?.user_metadata?.name,
+          preferred_username: user?.user_metadata?.preferred_username,
+          email: user?.email,
+        }
+        setUser(tamp);
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        router.push('/login');
       }
-      //   console.log('header user', user);
-      let tamp = {
-        id: user?.id,
-        avatar_url: user?.user_metadata?.avatar_url,
-        full_name: user?.user_metadata?.full_name,
-        name: user?.user_metadata?.name,
-        preferred_username: user?.user_metadata?.preferred_username,
-      }
-      //   console.log('tamp', tamp);
-      setUser(tamp);
     };
+
     fetchUserData();
-  }, []);
+  }, [loginKey]);
 
   const handleLogout = async () => {
     try {
-      // Call Supabase signOut
       const { error } = await signOut();
       if (error) {
         console.error('Error signing out:', error);
         return;
       }
 
-      // Clear local storage
+      // 断开钱包连接
+      disconnect();
+
       localStorage.removeItem('user');
-
-      // Update local state
-      // setIsLoggedIn(false);
+      setUser(null);
       setIsDropdownOpen(false);
-
-      // Redirect to login page
-      console.log('logout 1111');
+      setLoginKey(prev => prev + 1);
       router.push('/login');
     } catch (error) {
       console.error('Error during logout:', error);
@@ -127,7 +147,7 @@ const Header: React.FC = () => {
                   className="w-8 h-8 rounded-full"
                   onError={() => setAvatarError(true)}
                 />
-                <span className="text-gray-700">{user?.full_name || user?.name || user?.preferred_username || 'User'}</span>
+                <span className="text-gray-700">{user?.full_name || user?.name || user?.preferred_username || user?.email || 'User'}</span>
                 <ChevronDownIcon className="w-4 h-4" />
               </button>
               {isDropdownOpen && (

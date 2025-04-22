@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 
 interface AddressFormData {
   receiver: string
   phone: string
+  phoneCountry: string
   address: string
   postcode: string
 }
@@ -21,12 +22,14 @@ interface AddressModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: AddressFormData) => void
+  isSubmitting?: boolean
 }
 
-export default function AddressModal({ isOpen, onClose, onSubmit }: AddressModalProps) {
+export default function AddressModal({ isOpen, onClose, onSubmit, isSubmitting }: AddressModalProps) {
   const [formData, setFormData] = useState<AddressFormData>({
     receiver: '',
     phone: '',
+    phoneCountry: '+86',
     address: '',
     postcode: ''
   })
@@ -34,11 +37,39 @@ export default function AddressModal({ isOpen, onClose, onSubmit }: AddressModal
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
+  // 添加国家/地区区号列表
+  const phoneCountries = [
+    { code: '+86', name: '中国大陆' },
+    { code: '+852', name: '中国香港' },
+    { code: '+853', name: '中国澳门' },
+    { code: '+886', name: '中国台湾' },
+    { code: '+81', name: '日本' },
+    { code: '+82', name: '韩国' },
+    { code: '+65', name: '新加坡' },
+    { code: '+60', name: '马来西亚' },
+    { code: '+84', name: '越南' },
+    { code: '+66', name: '泰国' },
+    { code: '+1', name: '美国/加拿大' },
+    { code: '+44', name: '英国' },
+    { code: '+61', name: '澳大利亚' },
+    { code: '+64', name: '新西兰' },
+    { code: '+49', name: '德国' },
+    { code: '+33', name: '法国' },
+    { code: '+39', name: '意大利' },
+    { code: '+7', name: '俄罗斯' },
+    { code: '+91', name: '印度' },
+    { code: '+971', name: '阿联酋' },
+  ]
+
   // 手机号格式验证
   const isValidPhone = (phone: string) => {
-    // 中国大陆手机号格式
-    const phoneRegex = /^1[3-9]\d{9}$/
-    return phoneRegex.test(phone)
+    // 根据不同国家/地区使用不同的验证规则
+    if (formData.phoneCountry === '+86') {
+      const phoneRegex = /^1[3-9]\d{9}$/
+      return phoneRegex.test(phone)
+    }
+    // 其他地区使用宽松验证规则
+    return phone.length >= 5 && phone.length <= 15
   }
 
   // 邮编验证
@@ -66,9 +97,8 @@ export default function AddressModal({ isOpen, onClose, onSubmit }: AddressModal
       newErrors.address = '请输入详细地址'
     }
 
-    if (!formData.postcode) {
-      newErrors.postcode = '请输入邮政编码'
-    } else if (!isValidPostcode(formData.postcode)) {
+    // 移除邮编验证
+    if (formData.postcode && !isValidPostcode(formData.postcode)) {
       newErrors.postcode = '请输入正确的邮政编码'
     }
 
@@ -204,16 +234,32 @@ export default function AddressModal({ isOpen, onClose, onSubmit }: AddressModal
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 联系电话 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="tel"
-                placeholder="请输入联系电话"
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.phone ? 'border-red-500' : ''
-                }`}
-                value={formData.phone}
-                onChange={handleChange('phone')}
-                onBlur={handleBlur('phone')}
-              />
+              <div className="flex space-x-2">
+                <div className="relative">
+                  <select
+                    value={formData.phoneCountry}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phoneCountry: e.target.value }))}
+                    className="appearance-none w-34 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                  >
+                    {phoneCountries.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.code} {country.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                <input
+                  type="tel"
+                  placeholder="请输入联系电话"
+                  className={`flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.phone ? 'border-red-500' : ''
+                  }`}
+                  value={formData.phone}
+                  onChange={handleChange('phone')}
+                  onBlur={handleBlur('phone')}
+                />
+              </div>
               {errors.phone && (
                 <p className="mt-1 text-sm text-red-500">{errors.phone}</p>
               )}
@@ -239,11 +285,11 @@ export default function AddressModal({ isOpen, onClose, onSubmit }: AddressModal
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                邮政编码 <span className="text-red-500">*</span>
+                邮政编码
               </label>
               <input
                 type="text"
-                placeholder="请输入邮政编码"
+                placeholder="请输入邮政编码（选填）"
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.postcode ? 'border-red-500' : ''
                 }`}
@@ -262,15 +308,24 @@ export default function AddressModal({ isOpen, onClose, onSubmit }: AddressModal
         <div className="px-6 py-4 border-t flex justify-end space-x-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+            disabled={isSubmitting}
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
           >
             取消
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
           >
-            下一步
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                处理中...
+              </>
+            ) : (
+              '下一步'
+            )}
           </button>
         </div>
       </div>

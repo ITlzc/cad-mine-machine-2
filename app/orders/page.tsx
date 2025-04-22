@@ -10,6 +10,15 @@ import PaymentModal from '../components/PaymentModal'
 import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
 import moment from 'moment'
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
+import { mainnet } from 'wagmi/chains'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
+
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 interface Order {
   orderId: string
@@ -44,6 +53,18 @@ export default function OrdersPage() {
     total: 0
   })
 
+  const { writeContractAsync } = useWriteContract()
+  const { address, isConnected } = useAccount()
+  const { openConnectModal } = useConnectModal()
+  const publicClient = usePublicClient()
+
+  const [pendingTransaction, setPendingTransaction] = useState<{
+    toastId: string;
+    paymentAddress: string;
+    amount: string;
+    orderId: string;
+  } | null>(null)
+
   const fetchOrders = async (page = 1, keyword = '') => {
     try {
       setLoading(true)
@@ -64,6 +85,19 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchOrders()
   }, [])
+
+  // 监听钱包连接状态
+  useEffect(() => {
+    if (isConnected && pendingTransaction) {
+      handleTransfer(
+        pendingTransaction.toastId,
+        pendingTransaction.paymentAddress,
+        pendingTransaction.amount,
+        pendingTransaction.orderId
+      )
+      setPendingTransaction(null)
+    }
+  }, [isConnected])
 
   const handleSearch = () => {
     fetchOrders(1, searchTerm)
@@ -92,18 +126,121 @@ export default function OrdersPage() {
     }
   }
 
+  // 处理转账的函数
+  const handleTransfer = async (toastId: string, paymentAddress: string, amount: string, orderId: string) => {
+    try {
+      toast.loading('转账处理中...', {
+        id: toastId
+      })
+
+      // ERC20 代币合约配置
+      const tokenAddress = '0x55d398326f99059fF775485246999027B3197955' as `0x${string}`
+      const tokenABI = [{
+        name: 'transfer',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'to', type: 'address' },
+          { name: 'amount', type: 'uint256' }
+        ],
+        outputs: [{ type: 'bool' }]
+      }] as const
+
+      // 将金额转换为 wei（考虑 18 位小数）
+      const amountInWei = BigInt(parseFloat(amount) * Math.pow(10, 18))
+
+      // 发起转账
+      const hash = await writeContractAsync({
+        abi: tokenABI,
+        address: tokenAddress,
+        functionName: 'transfer',
+        args: [paymentAddress as `0x${string}`, amountInWei],
+        chain: mainnet,
+        account: address
+      })
+
+      // 等待交易确认
+      toast.loading('等待交易确认...', {
+        id: toastId
+      })
+
+      // 等待交易被确认
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
+      
+      if (receipt.status === 'success') {
+        // 确认支付
+        const response_confirm: any = await minerService.confirmPayment(orderId)
+        console.log(response_confirm)
+
+        toast.success('支付成功', {
+          id: toastId
+        })
+        
+        // 刷新订单列表
+        const res: any = await orderService.orderList()
+        setOrders(res.records)
+      } else {
+        throw new Error('交易失败')
+      }
+    } catch (error: any) {
+      console.error('转账失败:', error)
+      toast.dismiss(toastId)
+    }
+  }
+
   const handleRepay = async (order: any) => {
     try {
       setProcessingOrders(prev => ({ ...prev, [order.id]: true }))
-      // 调用重新支付接口获取支付地址
-      setCurrentOrder({
-        ...order,
-        payment_address: order.payment_address,
-      })
-      setShowPaymentModal(true)
+
+      // 检测是否为钱包环境
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          const toastId = toast.loading('准备支付...')
+
+          // 检查钱包连接状态
+          if (!isConnected && openConnectModal) {
+            toast.loading('请先连接钱包...', {
+              id: toastId
+            })
+            
+            // 保存待处理的交易信息
+            setPendingTransaction({
+              toastId,
+              paymentAddress: order.payment_address,
+              amount: order.amount,
+              orderId: order.id
+            })
+            
+            // 打开 RainbowKit 钱包连接模态框
+            openConnectModal()
+            return
+          }
+
+          // 如果已经连接钱包，直接处理转账
+          await handleTransfer(
+            toastId,
+            order.payment_address,
+            order.amount,
+            order.id
+          )
+          
+        } catch (error: any) {
+          console.error('支付失败:', error)
+        } finally {
+          setProcessingOrders(prev => ({ ...prev, [order.id]: false }))
+        }
+      } else {
+        // 非钱包环境或未连接钱包，显示常规支付弹窗
+        setCurrentOrder({
+          ...order,
+          payment_address: order.payment_address,
+        })
+        setShowPaymentModal(true)
+        setProcessingOrders(prev => ({ ...prev, [order.id]: false }))
+      }
     } catch (error) {
-      toast.error('获取支付信息失败')
-    } finally {
+      console.error('获取支付信息失败:', error)
+      // toast.error('获取支付信息失败')
       setProcessingOrders(prev => ({ ...prev, [order.id]: false }))
     }
   }
@@ -202,7 +339,7 @@ export default function OrdersPage() {
                         <td className="px-4 py-4 text-sm text-gray-900">{order.order_id}</td>
                         <td className="px-4 py-4">
                           <div className="flex items-center">
-                            <div className="h-12 w-12 relative">
+                            <div className="h-12 w-12 min-w-12 min-h-12 relative">
                               <Image
                                 src={order.machine_info.image}
                                 alt={order.machine_info.title}
@@ -211,8 +348,8 @@ export default function OrdersPage() {
                               />
                             </div>
                             <div className="ml-2">
-                              <div className="text-sm font-medium text-gray-900">{order.machine_info.title}</div>
-                              {/* <div className="text-sm text-gray-500">数量: 1台</div> */}
+                              <div className="text-sm font-medium text-gray-900 whitespace-normal break-words max-w-[200px]">{order.machine_info.title}</div>
+                              <div className="text-sm text-gray-500">数量: {order.quantity}台</div>
                             </div>
                           </div>
                         </td>
@@ -240,7 +377,7 @@ export default function OrdersPage() {
                             <span className="text-gray-500">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">$ {order.amount}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">$ {order.amount} U</td>
                         <td className="px-4 py-4">
                           <div className="text-sm text-gray-900 truncate max-w-[120px]" title={order.txHash}>
                             {order.status === 1 ? order.transaction_hash : '-'}
@@ -260,7 +397,7 @@ export default function OrdersPage() {
                                 {processingOrders[order.id] ? '处理中...' : '重新支付'}
                               </button>
                             ) : null}
-                            {order.status === 0 || order.status === 5 ? (
+                            {order.status === 0 ? (
                               <button
                                 className="px-3 w-[90px] py-1.5 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
                                 onClick={() => handleCancelClick(order)}

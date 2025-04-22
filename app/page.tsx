@@ -12,7 +12,9 @@ import PaymentModal from './components/PaymentModal'
 import { minerService } from './services/miner-service'
 import { userService } from './services/user-service';
 import Loading from './components/Loading'
-import { useAccount } from 'wagmi'
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
+import { mainnet } from 'wagmi/chains'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 
 declare global {
   interface Window {
@@ -40,8 +42,35 @@ export default function Home() {
   const [orderData, setOrderData] = useState({
     machine_id: '',
     pool_id: '',
-    shipping_info: null
+    shipping_info: null,
+    quantity: 0
   })
+  const [quantities, setQuantities] = useState<{ [key: string]: number }>({})
+
+  const { writeContractAsync } = useWriteContract()
+  const { address, isConnected } = useAccount()
+  const { openConnectModal } = useConnectModal()
+  const publicClient = usePublicClient()
+
+  const [pendingTransaction, setPendingTransaction] = useState<{
+    toastId: string;
+    paymentAddress: string;
+    amount: string;
+    orderId: string;
+  } | null>(null)
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 初始化每个矿机的数量为其 MPQ
+  useEffect(() => {
+    if (miners.length > 0) {
+      const initialQuantities = miners.reduce((acc: { [key: string]: number }, miner: any) => {
+        acc[miner.id] = miner.MPQ || 1;
+        return acc;
+      }, {});
+      setQuantities(initialQuantities);
+    }
+  }, [miners]);
 
   // 检查是否已经绑定钱包
   useEffect(() => {
@@ -78,6 +107,19 @@ export default function Home() {
     fetchMiners()
   }, [])
 
+  // 监听钱包连接状态
+  useEffect(() => {
+    if (isConnected && pendingTransaction) {
+      handleTransfer(
+        pendingTransaction.toastId,
+        pendingTransaction.paymentAddress,
+        pendingTransaction.amount,
+        pendingTransaction.orderId
+      )
+      setPendingTransaction(null)
+    }
+  }, [isConnected])
+
   // 连接钱包的处理函数
   const handleBindWallet = async (address: string) => {
     try {
@@ -99,7 +141,11 @@ export default function Home() {
 
   const handleBuyClick = (miner: any) => {
     setSelectedMiner(miner)
-    setOrderData(prev => ({ ...prev, machine_id: miner.id }))
+    setOrderData(prev => ({ 
+      ...prev, 
+      machine_id: miner.id,
+      quantity: quantities[miner.id] || miner.MPQ || 1
+    }))
     setShowPoolModal(true)
   }
 
@@ -110,14 +156,83 @@ export default function Home() {
     setShowAddressModal(true)
   }
 
+  // 处理转账的函数
+  const handleTransfer = async (toastId: string, paymentAddress: string, amount: string, orderId: string) => {
+    try {
+      toast.loading('转账处理中...', {
+        id: toastId
+      })
+
+      // ERC20 代币合约配置
+      const tokenAddress = '0x55d398326f99059fF775485246999027B3197955' as `0x${string}`
+      const tokenABI = [{
+        name: 'transfer',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'to', type: 'address' },
+          { name: 'amount', type: 'uint256' }
+        ],
+        outputs: [{ type: 'bool' }]
+      }] as const
+
+      // 将金额转换为 wei（考虑 18 位小数）
+      const amountInWei = BigInt(parseFloat(amount) * Math.pow(10, 18))
+
+      // 发起转账
+      const hash = await writeContractAsync({
+        abi: tokenABI,
+        address: tokenAddress,
+        functionName: 'transfer',
+        args: [paymentAddress as `0x${string}`, amountInWei],
+        chain: mainnet,
+        account: address
+      })
+
+      // 等待交易确认
+      toast.loading('等待交易确认...', {
+        id: toastId
+      })
+
+      // 等待交易被确认
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
+      
+      if (receipt.status === 'success') {
+        // 确认支付
+        const response_confirm: any = await minerService.confirmPayment(orderId)
+        console.log(response_confirm)
+
+        toast.success('支付成功', {
+          id: toastId
+        })
+        setOrderData({
+          machine_id: '',
+          pool_id: '',
+          shipping_info: null,
+          quantity: 0
+        })
+        router.push(`/orders`)
+      } else {
+        throw new Error('交易失败')
+      }
+    } catch (error: any) {
+      console.error('转账失败:', error)
+      toast.dismiss(toastId)
+    }
+  }
+
   const handleAddressSubmit = async (addressData: any) => {
     try {
+      setIsSubmitting(true)
       // 创建订单
       const response: any = await minerService.createOrder({
         machine_id: orderData.machine_id,
         pool_id: orderData.pool_id,
-        shipping_info: addressData
+        shipping_info: addressData,
+        quantity: orderData.quantity
       })
+
+      console.log(response)
 
       // 保存支付信息
       setPaymentInfo({
@@ -125,10 +240,65 @@ export default function Home() {
         id: response.id
       })
 
+      // 订单创建成功 提示成功和提示操作转账支付
+      toast.success('订单创建成功,请在钱包中确认支付')
       setShowAddressModal(false)
-      setShowPaymentModal(true)
+      setIsSubmitting(false)
+
+
+      // 检测是否为钱包环境
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          const toastId = toast.loading('准备支付...')
+
+          // 检查钱包连接状态
+          if (!isConnected && openConnectModal) {
+            toast.loading('请先连接钱包...', {
+              id: toastId
+            })
+            
+            // 保存待处理的交易信息
+            setPendingTransaction({
+              toastId,
+              paymentAddress: response.payment_address,
+              amount: response.amount,
+              orderId: response.id
+            })
+            
+            // 打开 RainbowKit 钱包连接模态框
+            openConnectModal()
+            return
+          }
+
+          // 如果已经连接钱包，直接处理转账
+          await handleTransfer(
+            toastId,
+            response.payment_address,
+            response.amount,
+            response.id
+          )
+          
+        } catch (error: any) {
+          console.error('支付失败:', error)
+          // 拦截用户主动取消code: 4001, message: 'MetaMask Tx Signature: User denied transaction signature.'
+          // if (error?.code !== 4001) {
+          //   toast.error('支付失败: ' + (error.message || '未知错误'))
+          //   // 如果支付失败，显示支付弹窗作为备选方案
+          //   setShowAddressModal(false)
+          //   setShowPaymentModal(true)
+          // }
+        } finally {
+          setIsSubmitting(false)
+        }
+      } else {
+        // 非钱包环境或未连接钱包，显示常规支付弹窗
+        setShowAddressModal(false)
+        setShowPaymentModal(true)
+        setIsSubmitting(false)
+      }
     } catch (error) {
       toast.error('创建订单失败')
+      setIsSubmitting(false)
     }
   }
 
@@ -144,7 +314,8 @@ export default function Home() {
       setOrderData({
         machine_id: '',
         pool_id: '',
-        shipping_info: null
+        shipping_info: null,
+        quantity: 0
       })
     } catch (error) {
       toast.error('确认支付失败')
@@ -169,8 +340,9 @@ export default function Home() {
 
       <AddressModal
         isOpen={showAddressModal}
-        onClose={() => setShowAddressModal(false)}
+        onClose={() => !isSubmitting && setShowAddressModal(false)}
         onSubmit={handleAddressSubmit}
+        isSubmitting={isSubmitting}
       />
 
       <PaymentModal
@@ -202,16 +374,54 @@ export default function Home() {
               {/* 内容区域 */}
               <div className="p-6">
                 <h2 className="text-xl font-semibold mb-2">{miner.title}</h2>
-                <p className="text-gray-600 mb-4">{miner.description}</p>
+                <div 
+                  className="text-gray-600 mb-4 prose prose-sm max-w-none [&>*]:!my-0 [&_p]:!leading-normal"
+                  dangerouslySetInnerHTML={{ __html: miner.description }}
+                />
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-blue-600">${miner.price}</span>
-                  <button
-                    className="px-6 py-2 min-w-[100px] bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                    onClick={() => handleBuyClick(miner)}
-                  >
-                    立即购买
-                  </button>
+                  <span className="text-2xl font-bold text-blue-600">${miner.price} U</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center border rounded-md">
+                      <button
+                        className="px-3 py-1 text-gray-600 hover:bg-gray-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuantities(prev => ({
+                            ...prev,
+                            [miner.id]: Math.max(miner.MPQ || 1, (prev[miner.id] || miner.MPQ || 1) - 1)
+                          }))
+                        }}
+                      >
+                        -
+                      </button>
+                      <span className="px-3 py-1 min-w-[40px] text-center">
+                        {quantities[miner.id] || miner.MPQ || 1}
+                      </span>
+                      <button
+                        className="px-3 py-1 text-gray-600 hover:bg-gray-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuantities(prev => ({
+                            ...prev,
+                            [miner.id]: (prev[miner.id] || miner.MPQ || 1) + 1
+                          }))
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <button
+                        className="px-6 py-2 min-w-[100px] bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                        onClick={() => handleBuyClick(miner)}
+                      >
+                        立即购买
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                <span className="flex justify-end mt-2 text-xs text-gray-500">{miner.MPQ || 1} 台起订</span>
+
               </div>
             </div>
           ))}

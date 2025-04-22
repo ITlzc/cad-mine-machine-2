@@ -188,3 +188,30 @@ export const unlinkTwitter = async () => {
     };
   }
 }; 
+
+export async function signInWithEmailOtp(email) {
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email: email,
+    options: {
+      shouldCreateUser: true    // 如果用户不存在，则自动注册
+    }
+  })
+  console.log('signInWithEmailOtp = ',data,error)
+  if (error) {
+      throw error
+  }
+  return data
+}
+
+export async function verifyOtp(email,otp) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: email,
+    token: otp,
+    type: 'email'
+  })
+  console.log('verifyOtp = ',data,error)
+  if (error) {
+      throw error
+  }
+  return data
+}

@@ -16,5 +16,7 @@ module.exports = {
       '3xl': '1920px',  // 超大屏显示器
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 } 

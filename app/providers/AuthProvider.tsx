@@ -127,15 +127,15 @@ const fetchUserData = async (user) => {
         // If user is not activated (status = 0) and trying to access any page other than login, redirect to login
         if (userData?.status === 0 && pathname !== '/login') {
         //   console.log('userData 1111',userData);
-          if (!active_record) {
-            router.push('/login');
-          }
+          // if (!active_record) {
+          //   router.push('/login');
+          // }
         }
       }
     };
 
     checkAuthAndRedirect();
-  }, [user, isLoading, pathname, router]);
+  }, [router]);
 
   const login = (userData: User) => {
     setUser(userData);

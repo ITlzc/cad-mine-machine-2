@@ -12,12 +12,19 @@ export default function WalletModal({ isOpen, onClose, onConnect }: {
 
   const { address } = useAccount()
 
+  // useEffect(() => {
+  //   console.log(address)
+  //   if (address) {
+  //     onConnect(address)
+  //   }
+  // }, [address])
+
   useEffect(() => {
     console.log(address)
-    if (address) {
+    if (address && isOpen) {
       onConnect(address)
     }
-  }, [address])
+  }, [address, isOpen])
 
   if (!isOpen) return null;
 
