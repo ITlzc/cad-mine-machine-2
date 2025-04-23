@@ -358,7 +358,7 @@ export default function Home() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3 3xl:grid-cols-4 gap-6">
           {miners.map(miner => (
-            <div key={miner.id} className="bg-white rounded-lg shadow overflow-hidden">
+            <div key={miner.id} className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
               {/* 图片容器 */}
               <div className="w-full bg-gray-200">
                 <Image
@@ -372,47 +372,50 @@ export default function Home() {
               </div>
 
               {/* 内容区域 */}
-              <div className="p-6">
+              <div className="p-6 flex flex-col flex-grow">
                 <h2 className="text-xl font-semibold mb-2">{miner.title}</h2>
                 <div 
-                  className="text-gray-600 mb-4 prose prose-sm max-w-none [&>*]:!my-0 [&_p]:!leading-normal"
+                  className="text-gray-600 mb-4 prose prose-sm max-w-none [&>*]:!my-0 [&_p]:!leading-normal flex-grow"
                   dangerouslySetInnerHTML={{ __html: miner.description }}
                 />
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-blue-600">${miner.price} U</span>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center border rounded-md">
-                      <button
-                        className="px-3 py-1 text-gray-600 hover:bg-gray-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setQuantities(prev => ({
-                            ...prev,
-                            [miner.id]: Math.max(miner.MPQ || 1, (prev[miner.id] || miner.MPQ || 1) - 1)
-                          }))
-                        }}
-                      >
-                        -
-                      </button>
-                      <span className="px-3 py-1 min-w-[40px] text-center">
-                        {quantities[miner.id] || miner.MPQ || 1}
-                      </span>
-                      <button
-                        className="px-3 py-1 text-gray-600 hover:bg-gray-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setQuantities(prev => ({
-                            ...prev,
-                            [miner.id]: (prev[miner.id] || miner.MPQ || 1) + 1
-                          }))
-                        }}
-                      >
-                        +
-                      </button>
+                <div className="mt-auto">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold text-blue-600">${miner.price} U</span>
+                      <div className="flex items-center border rounded-md">
+                        <button
+                          className="px-3 py-1 text-gray-600 hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuantities(prev => ({
+                              ...prev,
+                              [miner.id]: Math.max(miner.MPQ || 1, (prev[miner.id] || miner.MPQ || 1) - 1)
+                            }))
+                          }}
+                        >
+                          -
+                        </button>
+                        <span className="px-3 py-1 min-w-[40px] text-center">
+                          {quantities[miner.id] || miner.MPQ || 1}
+                        </span>
+                        <button
+                          className="px-3 py-1 text-gray-600 hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuantities(prev => ({
+                              ...prev,
+                              [miner.id]: (prev[miner.id] || miner.MPQ || 1) + 1
+                            }))
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs text-gray-500">{miner.MPQ || 1} 台起订</span>
                       <button
-                        className="px-6 py-2 min-w-[100px] bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                        className="px-6 py-2 min-w-[100px] bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap"
                         onClick={() => handleBuyClick(miner)}
                       >
                         立即购买
@@ -420,8 +423,6 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <span className="flex justify-end mt-2 text-xs text-gray-500">{miner.MPQ || 1} 台起订</span>
-
               </div>
             </div>
           ))}
