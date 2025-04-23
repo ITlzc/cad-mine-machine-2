@@ -43,7 +43,6 @@ class ApiClient {
           break
         // ... 其他错误码处理
       }
-      toast.error(data.message || '请求失败')
       throw new Error(data.message || '请求失败')
     }
     
@@ -76,9 +75,9 @@ class ApiClient {
 
       return await this.handleResponse<T>(response)
     } catch (error) {
-      if (showError && error instanceof Error) {
-        toast.error(error.message)
-      }
+      // if (showError && error instanceof Error) {
+      //   toast.error(error.message)
+      // }
       throw error
     }
   }

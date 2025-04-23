@@ -75,7 +75,7 @@ export default function PoolSelectModal({ isOpen, onClose, onNext }: PoolSelectM
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-[500px] relative">
+      <div className="bg-white rounded-lg w-[600px] relative">
         {/* 关闭按钮 */}
         <button
           onClick={onClose}

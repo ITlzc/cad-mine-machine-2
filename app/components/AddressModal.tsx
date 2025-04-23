@@ -177,7 +177,7 @@ export default function AddressModal({ isOpen, onClose, onSubmit, isSubmitting }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-[500px] relative">
+      <div className="bg-white rounded-lg w-[600px] relative">
         {/* 关闭按钮 */}
         <button 
           onClick={onClose}
@@ -239,7 +239,7 @@ export default function AddressModal({ isOpen, onClose, onSubmit, isSubmitting }
                   <select
                     value={formData.phoneCountry}
                     onChange={(e) => setFormData(prev => ({ ...prev, phoneCountry: e.target.value }))}
-                    className="appearance-none w-34 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                    className="appearance-none px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
                   >
                     {phoneCountries.map(country => (
                       <option key={country.code} value={country.code}>

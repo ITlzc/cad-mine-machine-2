@@ -76,7 +76,7 @@ export default function OrdersPage() {
         total: res.total
       }))
     } catch (error) {
-      toast.error('获取订单列表失败')
+      console.error('获取订单列表失败', error)
     } finally {
       setLoading(false)
     }
@@ -194,9 +194,8 @@ export default function OrdersPage() {
 
       // 检测是否为钱包环境
       if (typeof window.ethereum !== 'undefined') {
+        const toastId = toast.loading('准备支付...')
         try {
-          const toastId = toast.loading('准备支付...')
-
           // 检查钱包连接状态
           if (!isConnected && openConnectModal) {
             toast.loading('请先连接钱包...', {
@@ -228,6 +227,7 @@ export default function OrdersPage() {
           console.error('支付失败:', error)
         } finally {
           setProcessingOrders(prev => ({ ...prev, [order.id]: false }))
+          toast.dismiss(toastId)
         }
       } else {
         // 非钱包环境或未连接钱包，显示常规支付弹窗
@@ -256,6 +256,7 @@ export default function OrdersPage() {
       const res: any = await orderService.orderList()
       setOrders(res.records)
     } catch (error) {
+      console.error('确认支付失败', error)
       toast.error('确认支付失败')
     } finally {
       setProcessingOrders(prev => ({ ...prev, [currentOrder.id]: false }))
@@ -278,6 +279,7 @@ export default function OrdersPage() {
       const res: any = await orderService.orderList()
       setOrders(res.records)
     } catch (error) {
+      console.error('取消订单失败', error)
       toast.error('取消订单失败')
     } finally {
       setProcessingOrders(prev => ({ ...prev, [orderToCancel.id]: false }))

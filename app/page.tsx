@@ -99,7 +99,7 @@ export default function Home() {
         const miners: any = await minerService.getMiners()
         setMiners(miners?.records)
       } catch (error) {
-        toast.error('获取矿机列表失败')
+        console.error('获取矿机列表失败', error)
       } finally {
         setLoading(false)
       }
@@ -221,6 +221,8 @@ export default function Home() {
     } catch (error: any) {
       console.error('转账失败:', error)
       toast.dismiss(toastId)
+    } finally {
+      toast.dismiss(toastId)
     }
   }
 
@@ -251,9 +253,8 @@ export default function Home() {
 
       // 检测是否为钱包环境
       if (typeof window.ethereum !== 'undefined') {
+        const toastId = toast.loading('准备支付...')
         try {
-          const toastId = toast.loading('准备支付...')
-
           // 检查钱包连接状态
           if (!isConnected && openConnectModal) {
             toast.loading('请先连接钱包...', {
@@ -283,15 +284,9 @@ export default function Home() {
           
         } catch (error: any) {
           console.error('支付失败:', error)
-          // 拦截用户主动取消code: 4001, message: 'MetaMask Tx Signature: User denied transaction signature.'
-          // if (error?.code !== 4001) {
-          //   toast.error('支付失败: ' + (error.message || '未知错误'))
-          //   // 如果支付失败，显示支付弹窗作为备选方案
-          //   setShowAddressModal(false)
-          //   setShowPaymentModal(true)
-          // }
         } finally {
           setIsSubmitting(false)
+          toast.dismiss(toastId)
         }
       } else {
         // 非钱包环境或未连接钱包，显示常规支付弹窗
@@ -321,6 +316,7 @@ export default function Home() {
         quantity: 0
       })
     } catch (error) {
+      console.error('确认支付失败', error)
       toast.error('确认支付失败')
     } finally {
       setSubmitting(false)
