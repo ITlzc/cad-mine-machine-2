@@ -11,8 +11,8 @@ import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
 import moment from 'moment'
 import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
-import { mainnet } from 'wagmi/chains'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
+import { Bsc } from '../utils/bsc_config'
 
 declare global {
   interface Window {
@@ -155,7 +155,7 @@ export default function OrdersPage() {
         address: tokenAddress,
         functionName: 'transfer',
         args: [paymentAddress as `0x${string}`, amountInWei],
-        chain: mainnet,
+        chain: Bsc,
         account: address
       })
 

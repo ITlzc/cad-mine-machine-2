@@ -4,17 +4,17 @@ import Link from 'next/link'
 import { ChevronDownIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getCurrentUser, signOut } from '../utils/supabase_lib';
+import { signOut } from '../utils/supabase_lib';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi'
+import { useUser } from '../contexts/UserContext';
 
 const Header: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
-  const [loginKey, setLoginKey] = useState(0);
+  const { user, setUser } = useUser();
   const { disconnect } = useDisconnect()
 
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -36,55 +36,6 @@ const Header: React.FC = () => {
     }
   }, [])
 
-  // 监听登录状态变化
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'user') {
-        setLoginKey(prev => prev + 1);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        let user_string = localStorage.getItem('user');
-        let user = null;
-        if (user_string) {
-          user = JSON.parse(user_string);
-        }
-        if (!user) {
-          const { user: user_data, error } = await getCurrentUser();
-          if (error || !user_data) {
-            router.push('/login');
-            return;
-          }
-          user = user_data;
-        }
-        
-        let tamp = {
-          id: user?.id,
-          avatar_url: user?.user_metadata?.avatar_url,
-          full_name: user?.user_metadata?.full_name,
-          name: user?.user_metadata?.name,
-          preferred_username: user?.user_metadata?.preferred_username,
-          email: user?.email,
-        }
-        setUser(tamp);
-      } catch (error) {
-        console.error('获取用户信息失败:', error);
-        router.push('/login');
-      }
-    };
-
-    fetchUserData();
-  }, [loginKey]);
-
   const handleLogout = async () => {
     try {
       const { error } = await signOut();
@@ -99,7 +50,6 @@ const Header: React.FC = () => {
       localStorage.removeItem('user');
       setUser(null);
       setIsDropdownOpen(false);
-      setLoginKey(prev => prev + 1);
       router.push('/login');
     } catch (error) {
       console.error('Error during logout:', error);

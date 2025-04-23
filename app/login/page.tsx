@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailOtp, verifyOtp, loginWithTwitter } from '../utils/supabase_lib';
 import { toast } from 'react-hot-toast';
+import { useUser } from '../contexts/UserContext';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
@@ -12,6 +13,7 @@ const LoginPage: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const { handleLoginSuccess, refreshUser } = useUser();
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -49,17 +51,10 @@ const LoginPage: React.FC = () => {
     if (!email || !verificationCode) return;
 
     try {
-      // TODO: Implement your login logic here
-      // const response = await fetch('/api/v1/auth/email-login/verify', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ email, verificationCode }),
-      // });
-
       const data = await verifyOtp(email, verificationCode);
       console.log('data = ',data)
+      handleLoginSuccess(data);
+      await refreshUser(); // 确保用户信息被刷新
       router.replace('/');
     } catch (error) {
       toast.error(error.message || 'Login failed');

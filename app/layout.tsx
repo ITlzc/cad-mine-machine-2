@@ -9,6 +9,7 @@ import { Inter } from 'next/font/google'
 import { usePathname } from 'next/navigation'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
+import { UserProvider } from './contexts/UserContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -37,20 +38,22 @@ export default function RootLayout({
         <link rel="icon" href="/images/favicon.ico" />
       </head>
       <body className={inter.className}>
-        <Providers>
-          <div className="min-h-screen bg-gray-50">
-            <Header />
-            <div className="flex">
-              {showSidebar && <Sidebar />}
-              <main className={`flex-1 ${showSidebar ? 'p-6 md:px-4' : ''} overflow-x-auto`}>
-                <AuthProvider>
-                  {children}
-                  <Toaster position="top-right" />
-                </AuthProvider>
-              </main>
+        <UserProvider>
+          <Providers>
+            <div className="min-h-screen bg-gray-50">
+              <Header />
+              <div className="flex">
+                {showSidebar && <Sidebar />}
+                <main className={`flex-1 ${showSidebar ? 'p-6 md:px-4' : ''} overflow-x-auto`}>
+                  <AuthProvider>
+                    {children}
+                    <Toaster position="top-right" />
+                  </AuthProvider>
+                </main>
+              </div>
             </div>
-          </div>
-        </Providers>
+          </Providers>
+        </UserProvider>
       </body>
     </html>
   )

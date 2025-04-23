@@ -13,7 +13,7 @@ import { minerService } from './services/miner-service'
 import { userService } from './services/user-service';
 import Loading from './components/Loading'
 import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
-import { mainnet } from 'wagmi/chains'
+import { Bsc } from './utils/bsc_config'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 
 declare global {
@@ -123,6 +123,7 @@ export default function Home() {
   // 连接钱包的处理函数
   const handleBindWallet = async (address: string) => {
     try {
+      setSubmitting(true)
       if (typeof window.ethereum !== 'undefined') {
         if (address) {
           await userService.bindWalletAddress(address)
@@ -136,6 +137,8 @@ export default function Home() {
     } catch (error) {
       console.error('连接钱包失败:', error)
       toast.error('连接钱包失败')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -185,7 +188,7 @@ export default function Home() {
         address: tokenAddress,
         functionName: 'transfer',
         args: [paymentAddress as `0x${string}`, amountInWei],
-        chain: mainnet,
+        chain: Bsc,
         account: address
       })
 
@@ -330,6 +333,7 @@ export default function Home() {
         isOpen={showWalletModal}
         onClose={() => setShowWalletModal(false)}
         onConnect={(address: string) => handleBindWallet(address)}
+        submitting={submitting}
       />
 
       <PoolSelectModal
