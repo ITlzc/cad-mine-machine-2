@@ -1,16 +1,16 @@
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultConfig, Chain } from '@rainbow-me/rainbowkit';
-import { injectedWallet } from '@rainbow-me/rainbowkit/wallets';
-import { metaMaskWallet } from '@rainbow-me/rainbowkit/wallets';
+import { injectedWallet, metaMaskWallet, walletConnectWallet } from '@rainbow-me/rainbowkit/wallets';
 import { Bsc } from './app/utils/bsc_config';
 
 export const config = getDefaultConfig({
-  appName: 'CAD Mine Machine',
-  projectId: 'CADUCEUS',
+  appName: 'cad-mine-machine',
+  projectId: 'd43e2f36c80cb43c87b4a38b44e2036b',
   wallets: [{
     groupName: 'Recommended',
-    wallets: [injectedWallet, metaMaskWallet]
-  }],
+    wallets: typeof window !== 'undefined' && typeof window.ethereum !== 'undefined' ? [injectedWallet, metaMaskWallet, walletConnectWallet] : [walletConnectWallet]
+  }
+],
   chains: [
     Bsc,
   ],
