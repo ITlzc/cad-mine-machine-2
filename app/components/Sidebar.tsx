@@ -11,7 +11,7 @@ export default function Sidebar() {
     // { icon: "📋", label: "矿机列表", path: "/machines" },
     // { icon: "💰", label: "收益提现", path: "/withdraw" },
     // { icon: "📝", label: "提现记录", path: "/records" },
-    { icon: "📄", label: "订单记录", path: "/orders" },
+    { icon: "📄", label: "订单记录", path: "/orders/" },
   ]
 
   return (

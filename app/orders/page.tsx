@@ -166,7 +166,7 @@ export default function OrdersPage() {
 
       // 等待交易被确认
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
-      
+
       if (receipt.status === 'success') {
         // 确认支付
         const response_confirm: any = await minerService.confirmPayment(orderId)
@@ -175,7 +175,7 @@ export default function OrdersPage() {
         toast.success('支付成功', {
           id: toastId
         })
-        
+
         // 刷新订单列表
         const res: any = await orderService.orderList()
         setOrders(res.records)
@@ -201,7 +201,7 @@ export default function OrdersPage() {
             toast.loading('请先连接钱包...', {
               id: toastId
             })
-            
+
             // 保存待处理的交易信息
             setPendingTransaction({
               toastId,
@@ -209,7 +209,7 @@ export default function OrdersPage() {
               amount: order.amount,
               orderId: order.id
             })
-            
+
             // 打开 RainbowKit 钱包连接模态框
             openConnectModal()
             return
@@ -222,7 +222,7 @@ export default function OrdersPage() {
             order.amount,
             order.id
           )
-          
+
         } catch (error: any) {
           console.error('支付失败:', error)
         } finally {
@@ -285,6 +285,20 @@ export default function OrdersPage() {
       setProcessingOrders(prev => ({ ...prev, [orderToCancel.id]: false }))
       setShowConfirmModal(false)
       setOrderToCancel(null)
+    }
+  }
+
+  const handleRefreshClick = async (order: any) => {
+    console.log(order)
+    try {
+      setProcessingOrders(prev => ({ ...prev, [order.id]: true }))
+      const res: any = await orderService.orderList()
+      setOrders(res.records)
+      setProcessingOrders(prev => ({ ...prev, [order.id]: false }))
+    } catch (error) {
+      console.error('刷新失败', error)
+      toast.error('刷新失败')
+      setProcessingOrders(prev => ({ ...prev, [order.id]: false }))
     }
   }
 
@@ -381,33 +395,57 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-900">$ {order.amount} U</td>
                         <td className="px-4 py-4">
-                          <div className="text-sm text-gray-900 truncate max-w-[120px]" title={order.txHash}>
-                            {order.status === 1 ? order.transaction_hash : '-'}
+                          <div className="text-sm text-gray-900 truncate max-w-[120px]" title={order.transaction_hash}>
+                            {order.status === 1 && order.transaction_hash ? <a href={`https://bscscan.com/tx/${order.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
+                              {order.transaction_hash.slice(0, 6) + '...' + order.transaction_hash.slice(-4)}
+                            </a> : '-'
+                            }
                           </div>
                         </td>
                         <td className="px-4 py-4">{getStatusTag(order.status)}</td>
                         <td className="px-4 py-4 text-sm text-gray-900">{moment(order.created_at).format('YYYY-MM-DD HH:mm:ss')}</td>
                         <td className="px-4 py-4">
 
+
                           <div className="flex space-x-2">
                             {order.status === 0 ? (
+                              <>
+                                <button
+                                  className="px-3 w-[90px] py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                  onClick={() => handleRepay(order)}
+                                  disabled={processingOrders[order.id]}
+                                >
+                                  {processingOrders[order.id] ? '处理中...' : '重新支付'}
+                                </button>
+
+                                <button
+                                  className="px-3 w-[90px] py-1.5 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                  onClick={() => handleCancelClick(order)}
+                                  disabled={processingOrders[order.id]}
+                                >
+                                  {processingOrders[order.id] ? '处理中...' : '取消订单'}
+                                </button>
+                              </>
+                            ) : null}
+
+                            {order.status === 5 ? (
                               <button
-                                className="px-3 w-[90px] py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                onClick={() => handleRepay(order)}
+                                className="px-3 w-[90px] py-1.5 border border-gray-300 text-gray-700 flex justify-center items-center text-sm rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                onClick={() => handleRefreshClick(order)}
                                 disabled={processingOrders[order.id]}
                               >
-                                {processingOrders[order.id] ? '处理中...' : '重新支付'}
+                                {processingOrders[order.id] ? <svg className="animate-spin h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg> : '刷新'}
                               </button>
                             ) : null}
-                            {order.status === 0 ? (
-                              <button
-                                className="px-3 w-[90px] py-1.5 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
-                                onClick={() => handleCancelClick(order)}
-                                disabled={processingOrders[order.id]}
-                              >
-                                {processingOrders[order.id] ? '处理中...' : '取消订单'}
-                              </button>
-                            ) : null}
+
+                            {
+                              order.status !== 0 && order.status !== 5 && (
+                                <div>-</div>
+                              )
+                            }
                           </div>
 
                         </td>

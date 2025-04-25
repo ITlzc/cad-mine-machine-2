@@ -20,7 +20,7 @@ const Header: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // 判断是否是登录相关页面
-  const isAuthPage = ['/login', '/register', '/forgot-password'].includes(pathname)
+  const isAuthPage = ['/login/', '/register/', '/forgot-password/'].includes(pathname)
 
   // 点击外部关闭下拉菜单
   useEffect(() => {

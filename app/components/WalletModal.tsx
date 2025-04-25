@@ -2,6 +2,7 @@
 
 import { useAccount } from 'wagmi'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
+import { useState, useEffect } from 'react'
 
 export default function WalletModal({ isOpen, onClose, onConnect, submitting }: {
   isOpen: boolean;
@@ -11,8 +12,10 @@ export default function WalletModal({ isOpen, onClose, onConnect, submitting }: 
 }) {
   const { address, isConnected } = useAccount()
   const { openConnectModal } = useConnectModal()
+  const [visible, setVisible] = useState(false)
 
   const handleBindWallet = async () => {
+    setVisible(true)
     if (!isConnected) {
       // 如果未连接钱包，先打开连接钱包弹窗
       openConnectModal?.()
@@ -21,9 +24,17 @@ export default function WalletModal({ isOpen, onClose, onConnect, submitting }: 
     
     // 如果已连接钱包，直接执行绑定操作
     if (address) {
+      setVisible(false)
       onConnect(address)
     }
   }
+
+  useEffect(() => {
+    if (isOpen && visible && address) {
+      onConnect(address)
+      setVisible(false)
+    }
+  }, [isOpen, address, visible])
 
   if (!isOpen) return null;
 
@@ -40,7 +51,7 @@ export default function WalletModal({ isOpen, onClose, onConnect, submitting }: 
               className='w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center w-full bind-wallet-btn' 
               onClick={handleBindWallet}
             >
-              {submitting ? '绑定中...' : (isConnected ? '绑定钱包' : '连接钱包') }
+              {submitting ? '绑定中...' : ('绑定钱包')}
             </button>
           )}
           <button

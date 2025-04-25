@@ -131,8 +131,6 @@ export default function Home() {
           setHasWallet(true)
           setShowWalletModal(false)
         }
-      } else {
-        toast.error('请安装 MetaMask 钱包！')
       }
     } catch (error) {
       console.error('连接钱包失败:', error)
