@@ -15,7 +15,10 @@ import Loading from './components/Loading'
 import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
 import { Bsc } from './utils/bsc_config'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
-
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
+import ConfirmModal from './components/ConfirmModal'
 declare global {
   interface Window {
     ethereum?: any;
@@ -37,7 +40,10 @@ export default function Home() {
   const [paymentInfo, setPaymentInfo] = useState<{
     address: string;
     id: string;
+    amount: number;
   } | null>(null)
+  const [discount, setDiscount] = useState<number | null>(null)
+  const [userByFetch, setUserByFetch] = useState<any>(null)
 
   const [orderData, setOrderData] = useState({
     machine_id: '',
@@ -60,6 +66,7 @@ export default function Home() {
   } | null>(null)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   // 初始化每个矿机的数量为其 MPQ
   useEffect(() => {
@@ -72,7 +79,7 @@ export default function Home() {
     }
   }, [miners]);
 
-  // 检查是否已经绑定钱包
+  // 获取用户邮箱和折扣信息
   useEffect(() => {
     async function getUserInfo() {
       const { user: user_data, error } = await getCurrentUser();
@@ -80,11 +87,21 @@ export default function Home() {
         console.error('获取用户信息失败:', error)
       } else {
         const userInfo: any = await userService.getUserInfo(user_data?.id)
-        console.log('用户信息:', userInfo, userInfo && userInfo?.user && !userInfo?.user.wallet_address)
+        setUserByFetch(userInfo?.user)
         if(userInfo && userInfo?.user && !userInfo?.user.wallet_address) {
           setShowWalletModal(true)
         } else {
           setHasWallet(true)
+        }
+        if (user_data?.email) {
+          try {
+            const discountData: any = await minerService.getDiscount(user_data.email)
+            if (discountData?.discount) {
+              setDiscount(discountData.discount)
+            }
+          } catch (error) {
+            console.error('获取折扣信息失败:', error)
+          }
         }
       }
     }
@@ -141,6 +158,11 @@ export default function Home() {
   }
 
   const handleBuyClick = (miner: any) => {
+    if(userByFetch.role === 0){
+      setShowConfirmModal(true)
+      return
+    }
+
     setSelectedMiner(miner)
     setOrderData(prev => ({ 
       ...prev, 
@@ -240,7 +262,8 @@ export default function Home() {
       // 保存支付信息
       setPaymentInfo({
         address: response.payment_address,
-        id: response.id
+        id: response.id,
+        amount: response.amount
       })
 
       // 订单创建成功 提示成功和提示操作转账支付
@@ -349,6 +372,17 @@ export default function Home() {
         onConfirm={handlePaymentConfirm}
         paymentAddress={paymentInfo?.address || ''}
         submitting={submitting}
+        minAmount={paymentInfo?.amount || 1}
+      />
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={()=> setShowConfirmModal(false)}
+        title="提示"
+        content="请向代理商购买"
+        confirmText="确定"
+        showCancelBtn={false}
       />
 
       {loading ? (
@@ -359,14 +393,39 @@ export default function Home() {
             <div key={miner.id} className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
               {/* 图片容器 */}
               <div className="w-full bg-gray-200">
-                <Image
-                  src={miner.image}
-                  alt={miner.title}
-                  width={400}
-                  height={269}
-                  className="w-full h-full object-cover"
-                  priority
-                />
+                {miner.detail_images?.length > 0 ? (
+                  <Slider
+                    dots={true}
+                    infinite={true}
+                    speed={500}
+                    slidesToShow={1}
+                    slidesToScroll={1}
+                  autoplay={true}
+                  autoplaySpeed={3000}
+                >
+                  {miner.detail_images.map((image, index) => (
+                    <div key={index} className="relative">
+                      <Image
+                        src={image}
+                        alt={`${miner.title} - 图片 ${index + 1}`}
+                        width={400}
+                        height={269}
+                        className="w-full h-full object-cover"
+                        priority={index === 0}
+                      />
+                    </div>
+                  ))}
+                </Slider>
+                ) : (
+                  <Image
+                    src={miner.image}
+                    alt={miner.title}
+                    width={400}
+                    height={269}
+                    className="w-full h-full object-cover"
+                    priority
+                  />
+                )}
               </div>
 
               {/* 内容区域 */}
@@ -379,7 +438,22 @@ export default function Home() {
                 <div className="mt-auto">
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-blue-600">${miner.price} U</span>
+                      <div className="flex flex-col">
+                        {discount && Number(discount) < 1 && Number(discount) > 0 ? (
+                          <>
+                            <span className="text-lg text-gray-400 line-through">
+                              原价：${miner.price} U
+                            </span>
+                            <span className="text-2xl font-bold text-blue-600">
+                              ${(miner.price * (discount))} U
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-2xl font-bold text-blue-600">
+                            ${miner.price} U
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center border rounded-md">
                         <button
                           className="px-3 py-1 text-gray-600 hover:bg-gray-100"

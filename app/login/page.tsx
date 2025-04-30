@@ -114,7 +114,7 @@ const LoginPage: React.FC = () => {
       <div className="w-[530px] bg-white rounded-lg p-8">
         <div className="flex justify-center mb-6">
           <Image 
-            src="/images/logo.svg" 
+            src="/images/logo.jpeg" 
             alt="Logo" 
             width={48}
             height={48}

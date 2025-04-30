@@ -10,12 +10,13 @@ import { usePathname } from 'next/navigation'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import { UserProvider } from './contexts/UserContext'
+import ScrollToTop from './components/ScrollToTop'
 
 const inter = Inter({ subsets: ['latin'] })
 
 
 // 定义不需要显示侧边栏的路由
-const noSidebarRoutes = ['/login', '/register', '/forgot-password']
+const noSidebarRoutes = ['/login/', '/register/', '/forgot-password/']
 
 export default function RootLayout({
   children,
@@ -38,6 +39,7 @@ export default function RootLayout({
         <link rel="icon" href="/images/favicon.ico" />
       </head>
       <body className={inter.className}>
+        <ScrollToTop />
         <UserProvider>
           <Providers>
             <div className="min-h-screen bg-gray-50">

@@ -63,11 +63,11 @@ const Header: React.FC = () => {
           <Link href="/">
             <div className="flex items-center">
               <Image
-                src="/images/logo.svg"
+                src="/images/logo.jpeg"
                 alt="EpochMine"
-                width={32}
-                height={32}
-                className="h-8 w-auto"
+                width={42}
+                height={42}
+                // className="h-8 w-auto"
               />
               <span className="ml-2 text-xl font-semibold">EpochMine</span>
             </div>

@@ -11,6 +11,7 @@ interface ConfirmModalProps {
   confirmText?: string
   cancelText?: string
   loading?: boolean
+  showCancelBtn?: boolean
 }
 
 export default function ConfirmModal({
@@ -21,7 +22,8 @@ export default function ConfirmModal({
   content,
   confirmText = '确认',
   cancelText = '取消',
-  loading = false
+  loading = false,
+  showCancelBtn = true
 }: ConfirmModalProps) {
   if (!isOpen) return null
 
@@ -48,13 +50,13 @@ export default function ConfirmModal({
 
         {/* 按钮组 */}
         <div className="px-6 py-4 border-t flex justify-end space-x-2">
-          <button
+          {showCancelBtn && <button
             onClick={onClose}
             disabled={loading}
             className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
           >
             {cancelText}
-          </button>
+          </button>}
           <button
             onClick={onConfirm}
             disabled={loading}

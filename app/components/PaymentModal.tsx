@@ -14,6 +14,7 @@ interface PaymentModalProps {
   submitting: boolean
   showStep?: boolean
   expiration_time?: string
+  minAmount?: number
 }
 
 export default function PaymentModal({
@@ -23,7 +24,8 @@ export default function PaymentModal({
   paymentAddress,
   submitting,
   showStep = true,
-  expiration_time = ''
+  expiration_time = '',
+  minAmount = 0
 }: PaymentModalProps) {
   const [countdown, setCountdown] = useState('23:59:59')
 
@@ -113,7 +115,7 @@ export default function PaymentModal({
                 value={paymentAddress}
                 // value={`${paymentAddress.slice(0, 10)}...${paymentAddress.slice(-6)}`}
                 readOnly
-                className="flex-1 px-4 py-2 border rounded-l-lg bg-gray-50 text-[12px]"
+                className="flex-1 px-4 py-2 border rounded-l-lg bg-gray-50 text-sm"
               />
               <button
                 onClick={handleCopyAddress}
@@ -133,6 +135,21 @@ export default function PaymentModal({
               className="mb-2"
             />
             <p className="text-sm text-gray-500">扫码支付</p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">网络</div>
+              <div className="text-sm">Binance Smart Chain</div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">最小充币额</span>
+              <span className="text-sm">{minAmount} USDT</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">充币到账时间</span>
+              <span className="text-sm">约 7 分钟</span>
+            </div>
           </div>
 
           <div className="bg-blue-50 p-4 rounded-lg mb-6">

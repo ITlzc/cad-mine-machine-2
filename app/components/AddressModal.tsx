@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-
+import { PhoneInput } from 'react-international-phone';
+import { PhoneNumberUtil } from 'google-libphonenumber'
+import 'react-international-phone/style.css'
 interface AddressFormData {
   receiver: string
   phone: string
@@ -37,39 +39,24 @@ export default function AddressModal({ isOpen, onClose, onSubmit, isSubmitting }
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
-  // 添加国家/地区区号列表
-  const phoneCountries = [
-    { code: '+86', name: '中国大陆' },
-    { code: '+852', name: '中国香港' },
-    { code: '+853', name: '中国澳门' },
-    { code: '+886', name: '中国台湾' },
-    { code: '+81', name: '日本' },
-    { code: '+82', name: '韩国' },
-    { code: '+65', name: '新加坡' },
-    { code: '+60', name: '马来西亚' },
-    { code: '+84', name: '越南' },
-    { code: '+66', name: '泰国' },
-    { code: '+1', name: '美国/加拿大' },
-    { code: '+44', name: '英国' },
-    { code: '+61', name: '澳大利亚' },
-    { code: '+64', name: '新西兰' },
-    { code: '+49', name: '德国' },
-    { code: '+33', name: '法国' },
-    { code: '+39', name: '意大利' },
-    { code: '+7', name: '俄罗斯' },
-    { code: '+91', name: '印度' },
-    { code: '+971', name: '阿联酋' },
-  ]
+  const phoneUtil = PhoneNumberUtil.getInstance();
+
+  const isPhoneValid = (phone: string) => {
+    try {
+      return phoneUtil.isValidNumber(phoneUtil.parseAndKeepRawInput(phone));
+    } catch (error) {
+      return false;
+    }
+  };
 
   // 手机号格式验证
   const isValidPhone = (phone: string) => {
-    // 根据不同国家/地区使用不同的验证规则
-    if (formData.phoneCountry === '+86') {
-      const phoneRegex = /^1[3-9]\d{9}$/
-      return phoneRegex.test(phone)
+    try {
+      const phoneNumber = phoneUtil.parseAndKeepRawInput(phone);
+      return phoneUtil.isValidNumber(phoneNumber);
+    } catch (error) {
+      return false;
     }
-    // 其他地区使用宽松验证规则
-    return phone.length >= 5 && phone.length <= 15
   }
 
   // 邮编验证
@@ -234,32 +221,39 @@ export default function AddressModal({ isOpen, onClose, onSubmit, isSubmitting }
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 联系电话 <span className="text-red-500">*</span>
               </label>
-              <div className="flex space-x-2">
-                <div className="relative">
-                  <select
-                    value={formData.phoneCountry}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phoneCountry: e.target.value }))}
-                    className="appearance-none px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
-                  >
-                    {phoneCountries.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.code} {country.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-                <input
-                  type="tel"
-                  placeholder="请输入联系电话"
-                  className={`flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              <PhoneInput
+                defaultCountry="cn"
+                value={formData.phone}
+                onChange={(phone, { country }) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    phone: phone,
+                    phoneCountry: country.iso2 ? `+${country.dialCode}` : '+86'
+                  }))
+                  
+                  if (touched.phone) {
+                    const newErrors = { ...errors }
+                    if (!phone) {
+                      newErrors.phone = '请输入联系电话'
+                    } else if (!isValidPhone(phone)) {
+                      newErrors.phone = '请输入正确的手机号码'
+                    } else {
+                      delete newErrors.phone
+                    }
+                    setErrors(newErrors)
+                  }
+                }}
+                preferredCountries={['cn', 'hk', 'mo', 'tw', 'us', 'gb', 'jp', 'kr', 'sg']}
+                onBlur={() => handleBlur('phone')()}
+                countrySelectorStyleProps={{
+                  buttonClassName: "!h-full !px-3 !py-2 !border !border-gray-300 !rounded-lg !mr-2"
+                }}
+                inputProps={{
+                  className: `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                     errors.phone ? 'border-red-500' : ''
-                  }`}
-                  value={formData.phone}
-                  onChange={handleChange('phone')}
-                  onBlur={handleBlur('phone')}
-                />
-              </div>
+                  }`
+                }}
+              />
               {errors.phone && (
                 <p className="mt-1 text-sm text-red-500">{errors.phone}</p>
               )}

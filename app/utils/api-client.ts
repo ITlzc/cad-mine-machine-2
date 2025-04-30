@@ -5,7 +5,8 @@ import { get_access_token } from '../utils/supabase_lib';
 interface ApiResponse<T = any> {
   code: number
   data: T
-  message: string
+  message: string,
+  msg: string
 }
 
 interface RequestConfig extends RequestInit {
@@ -43,7 +44,7 @@ class ApiClient {
           break
         // ... 其他错误码处理
       }
-      throw new Error(data.message || '请求失败')
+      throw new Error(data.msg || '请求失败')
     }
     
     return data.data
