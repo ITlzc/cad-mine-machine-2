@@ -16,7 +16,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 
 // 定义不需要显示侧边栏的路由
-const noSidebarRoutes = ['/login/', '/register/', '/forgot-password/']
+const noSidebarRoutes = ['/login', '/register', '/forgot-password']
 
 export default function RootLayout({
   children,
